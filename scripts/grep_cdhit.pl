@@ -22,44 +22,48 @@ if ($options{h})
     }
 
 my %Cluster;
+my %KeyRep;
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # - - - - - M A I N - - - - - - - - - - - - - - - - - - - -
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 ##### 1. Deal with file
 #print "\n\nOpening infile: $options{c}";
+open(IN2, "<$options{i}") or die "\n\nPlease don't forget to provide a list of headers of interest. File $options{i} doesn't exist.\n\n";
+my @DATA = <IN2>; close(IN2);
+
 open(IN, "<$options{c}") or die "\n\nFile $options{c} doesn't exist; try again\n\n";
 my @DATA2 = <IN>; close(IN);
-my $clusterhead = "";
+my $unid = 10001;
 foreach my $i (@DATA2)
     {	chomp($i);
 	if ($i =~ m/^>/)
-	 {	$clusterhead = $i;
+	 {	$unid += 1;
+		unless ($unid - 1 == 10001)
+			{	my $interest = $unid - 1;
+				$KeyRep{$Cluster{$interest}{'rep_seq'}}{'sequences'} = $Cluster{$interest}{'sequences'};
+			}
 	 }
 	else
 	 {	$i =~ m/.+, >(.+)\.\.\./;
 		my $header = $1;
-		$Cluster{$clusterhead}{'sequences'} .= $header.';';
+		$Cluster{$unid}{'sequences'} .= $header.';';
 		if ($i =~ m/\*$/)
-		 {	$Cluster{$clusterhead}{'rep_seq'} = $header;
+		 {	$Cluster{$unid}{'rep_seq'} = $header;
 		 }
 		#print "$clusterhead\t$Cluster{$clusterhead}{'sequences'}\t<<$Cluster{$clusterhead}{'rep_seq'}>>\n";
 	 }
     }
+    
+#Add the last entry to %KeyRep
+$KeyRep{$Cluster{$unid}{'rep_seq'}}{'sequences'} = $Cluster{$unid}{'sequences'};
 
-#Match headers of interest and print all seqs from cluster to STDOUT.
-open(IN2, "<$options{i}") or die "\n\nPlease don't forget to provide a list of headers of interest. File $options{i} doesn't exist.\n\n";
-my @DATA = <IN2>; close(IN2);
 foreach my $i (@DATA)
 	{	chomp($i);
-		foreach my $j (sort keys %Cluster)
-			{	if ($i eq $Cluster{$j}{'rep_seq'})
-					{	my $seqs = $Cluster{$j}{'sequences'};
-						my @split_seqs = split(';', $seqs);
-						foreach my $k (@split_seqs)
-							{	print "$k\n";
-							}
-					}
+		my $seqs = $KeyRep{$i}{'sequences'};
+		my @split_seqs = split(';', $seqs);
+		foreach my $k (@split_seqs)
+			{	print "$k\n";
 			}
 	}
 
